@@ -1,17 +1,38 @@
-/*
+/* UPDATED-2021
  * Jordan Park
  * 2016
  * Bingo Application!
- * 
+ *
  * To add windows.h and Play sound:
  * Project -> properties -> general -> update SDK
  * Project -> properties -> linker -> input -> add dependency "Winmm.lib"
- * 
- * Although it should automatically do it, the buffer size of the window 
- * should be set to 80 for intended output
+ *
+ * NOTE ON STARTUP! :
+ * Although it should automatically do it,
+ * In console properties,
+ *  * The buffer size of the window should be SET TO 80 for intended output
+ *  * UNCHECK wrap text on output
+ */
+
+ /* TO DO list
+ *
+ *  * Bingo display in a text file
+ *  * Users Login opening screen or continue as guest
+ *  * Users are associated with currency
+ *  * Menu
+ *     * Play
+ *        * encase so when you win you go back
+ *        * highlight the current pick if it's picked in a different color
+ *        * make winning rows highlighted in a different color with a pause before the win
+ *        * make betting (under 40, 30, 20, etc) with different betting multipliers
+ *     * Leaderboards
+ *        * for best rounds
+ *        * for highest moneys
+ *     * Quit
  */
 
 #include <iostream>
+#include <fstream>
 #include <string>
 #include <ctime>
 #include <cstdlib>
@@ -20,74 +41,34 @@
 #include <windows.h>
 #include <MMSystem.h>
 
-//play once
-//PlaySound(TEXT("DearGod.wav"), NULL, SND_ASYNC);
-//play and loop
-//PlaySound(TEXT("TakeOut.wav"), NULL, SND_ASYNC | SND_FILENAME | SND_LOOP);
+ //play once
+ //PlaySound(TEXT("DearGod.wav"), NULL, SND_ASYNC);
+ //play and loop
+ //PlaySound(TEXT("TakeOut.wav"), NULL, SND_ASYNC | SND_FILENAME | SND_LOOP);
 
-
-using namespace std;                                                
-
-string bingo1 = "______ _____ _   _ _____ _____ ";
-string bingo2 = "| ___ \\_   _| \\ | |  __ \\  _  |";
-string bingo3 = "| |_/ / | | |  \\| | |  \\/ | | |";
-string bingo4 = "| ___ \\ | | | . ` | | __| | | |";
-string bingo5 = "| |_/ /_| |_| |\\  | |_\\ \\ \\_/ /";
-string bingo6 = "\\____/ \\___/\\_| \\_/\\____/\\___/ ";
-                               
-                               
-
+using namespace std;
 
 string mpipe = "--------------------------------------------------------------------------------";
 string pipe = "|";
 string boardtitle = "|       B       |       I       |       N       |       G       |       O      |";
-int program = 1;
+
+//quit flag for program 
+bool program = true;
+
+//quit flag for game
+bool game = true;
+
+//global round tracker
 int rounds = 0;
-int a;
-int n;
 
-//int c for color 
+//2d array of our bingo card
+int boardArrayNums[5][5] = { 0 };
 
-int c = 13;
-int pick;
-bool rocky;
-bool rocky2;
-//
-bool one;
-bool two;
-bool three;
-bool four;
-bool five;
-bool six;
-bool seven;
-bool eight;
-bool nine;
-bool ten;
-bool eleven;
-bool twelve;
-bool thirteen;
-bool fourteen;
-bool fifteen;
-bool sixteen;
-bool seventeen;
-bool eighteen;
-bool nineteen;
-bool twenty;
-bool twenty1;
-bool twenty2;
-bool twenty3;
-bool twenty4;
-bool twenty5;
+//parallel 2d array of bools for if a number on our board has been picked
+bool boardArrayFlags[5][5] = { {false} };
 
-
-vector<int> vect25(25);
-vector<int> vectpara(25);
-vector<int> ballpool(100);
-
-void SetColor(int value)
-{
-	SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), value);
-}
+//a vector of picked balls so we don't pick the same ball twice
+vector<bool> ballpool(75, false);
 
 /*
 1: Blue
@@ -106,480 +87,177 @@ void SetColor(int value)
 14: Yellow
 15: Bright white
 */
+void SetColor(int value)
+{
+	SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), value);
+}
 
-void writecolor(int thing);
-
+//Returns Random number 1-75
 int RNG()
 {
-	n = (rand() % 75) + 1;
+	int n = (rand() % 75) + 1;
 	return n;
 }
 
-bool duplicate(vector<int> vect, int b) 
+//Check for duplicate random number on our Board
+bool duplicateCheck(int x)
 {
 	bool run = false;
-	for (int i = 0; i < 25; i++)
+	for (int i = 0; i < 5; i++)
 	{
-		if (vect[i] == b)
+		for (int j = 0; j < 5; j++)
 		{
-			run = true;
+			if (boardArrayNums[i][j] == x)
+			{
+				run = true;
+			}
 		}
 	}
 	return run;
 }
 
-void fillpool()
-{
-	for (int i = 0; i < 100; i++)
-	{ 
-		ballpool[i] = i + 1;
-	}
-}
-
+//displays ascii bingo
 void bingologo()
 {
-	cout << setw(54) << right << bingo1 << endl;
-	cout << setw(54) << right << bingo2 << endl;
-	cout << setw(54) << right << bingo3 << endl;
-	cout << setw(54) << right << bingo4 << endl;
-	cout << setw(54) << right << bingo5 << endl;
-	cout << setw(54) << right << bingo6 << endl;
+	fstream logoFile;
+	logoFile.open("bingoAscii.txt", ios::in);
 
-}
-                                    
-
-void fillvect()
-{
-	for (int i = 0; i < 25; i++)
+	if (logoFile.is_open())
 	{
-		a = RNG();
-		while (duplicate(vect25, a))                      
+		string logoLine;
+		while (getline(logoFile, logoLine))
 		{
-			a = RNG();
+			cout << setw(73) << right << logoLine << endl;
 		}
-		if (i < 12 || i > 12)
-		{
-			vect25[i] = a;
-		}
-		else if (i == 12)
-		{
-			vect25[i] = 111;
-		}
-
 	}
-
-	PlaySound(TEXT("ShootingGallery.wav"), NULL, SND_ASYNC | SND_FILENAME | SND_LOOP);
-	SetColor(11);
-	bingologo();
-	SetColor(7);
-	Sleep(2000);
-	system("cls");
 }
 
-void makeboard()
+//fills our users' board with random numbers except our free space
+//#no duplicates
+void fillBoard()
+{
+	int boardNum;
+	for (int i = 0; i < 5; i++)
+	{
+		for (int j = 0; j < 5; j++)
+		{
+			if (!(i == 2 && j == 2))
+			{
+				boardNum = RNG();
+				while (duplicateCheck(boardNum))
+				{
+					boardNum = RNG();
+				}
+				boardArrayNums[i][j] = boardNum;
+			}
+		}
+	}
+}
+
+//creates and displays our bingo card
+void makeBoard()
 {
 	cout << endl;
 	cout << mpipe;
+	//BINGO top line
 	cout << pipe << setw(8) << right;
 	SetColor(10);
-		cout << "B";
-		SetColor(7);
-		cout << setw(8) << pipe << setw(8);
-		SetColor(10);
-		cout << "I";
-		SetColor(7);
-		cout << setw(8) << pipe << setw(8);
-		SetColor(10);
-		cout << "N";
-		SetColor(7);
-		cout << setw(8) << pipe << setw(8);
-		SetColor(10);
-		cout << "G";
-		SetColor(7);
-		cout << setw(8) << pipe << setw(8);
-		SetColor(10);
-		cout << "O";
-		SetColor(7);
-		cout << setw(7) << pipe;
+	cout << "B";
+	SetColor(7);
+	cout << setw(8) << pipe << setw(8);
+	SetColor(10);
+	cout << "I";
+	SetColor(7);
+	cout << setw(8) << pipe << setw(8);
+	SetColor(10);
+	cout << "N";
+	SetColor(7);
+	cout << setw(8) << pipe << setw(8);
+	SetColor(10);
+	cout << "G";
+	SetColor(7);
+	cout << setw(8) << pipe << setw(8);
+	SetColor(10);
+	cout << "O";
+	SetColor(7);
+	cout << setw(7) << pipe;//
 	cout << mpipe;
-	cout << endl; 
+	cout << endl;
 	cout << mpipe;
 
-	int z = 0;
-
-	for (int j = 0; j < 5; j++)
+	for (int i = 0; i < 5; i++)
 	{
-		for (int i = 0; i < 5; i++)
+		for (int j = 0; j < 5; j++)
 		{
 			SetColor(7);
 
-			if (z != 12)
+			if (!(i == 2 && j == 2))
 			{
-				if (i < 4)
+				SetColor(7);
+				cout << right << pipe << setw(8);
+
+				//if this number has been picked, 
+				//then make it purple to  the user
+				if (boardArrayFlags[i][j])
 				{
-					cout << right << pipe << setw(8);
-					SetColor(7);
-					writecolor(z);
-					cout << vect25[z];
-					SetColor(7);
-					cout << setw(8);
+					SetColor(13);
 				}
-				if (i == 4)
-				{
-					cout << right << pipe << setw(8);
-					writecolor(z);
-					cout << vect25[z];
-					SetColor(7);
-					cout << setw(7);
-				}
-				z++;
+
+				cout << boardArrayNums[i][j];
+				SetColor(7);
+
+				cout << ((j < 4) ? setw(8) : setw(7));
 			}
 			else
 			{
 				cout << right << pipe << setw(13);
-				SetColor(c);
+				SetColor(13);
 				cout << "Free  space";
 				SetColor(7);
 				cout << setw(3);
-				z++;
 			}
-			
 		}
 		cout << pipe;
 		cout << mpipe;
 	}
 }
 
-void writecolor(int thing)
-{
-	switch (thing)
-	{
-
-	case 0:
-		if (one == true)
-	{
-		SetColor(c);
-	}
-		break;
-	case 1:
-		if (two == true)
-		{
-			SetColor(c);
-		}
-		break;
-	case 2:
-		if (three == true)
-		{
-			SetColor(c);
-		}
-		break;
-	case 3:
-		if (four == true)
-		{
-			SetColor(c);
-		}
-		break;
-	case 4:
-		if (five == true)
-		{
-			SetColor(c);
-		}
-		break;
-	case 5:
-		if (six == true)
-		{
-			SetColor(c);
-		}
-		break;
-	case 6:
-		if (seven == true)
-		{
-			SetColor(c);
-		}
-		break;
-	case 7:
-		if (eight == true)
-		{
-			SetColor(c);
-		}
-		break;
-	case 8:
-		if (nine == true)
-		{
-			SetColor(c);
-		}
-		break;
-	case 9:
-		if (ten == true)
-		{
-			SetColor(c);
-		}
-		break;
-	case 10:
-		if (eleven == true)
-		{
-			SetColor(c);
-		}
-		break;
-	case 11:
-		if (twelve == true)
-		{
-			SetColor(c);
-		}
-		break;
-	case 12:
-		if (thirteen == true)
-		{
-			SetColor(c);
-		}
-		break;
-	case 13:
-		if (fourteen == true)
-		{
-			SetColor(c);
-		}
-		break;
-	case 14:
-		if (fifteen == true)
-		{
-			SetColor(c);
-		}
-		break;
-	case 15:
-		if (sixteen == true)
-		{
-			SetColor(c);
-		}
-		break;
-	case 16:
-		if (seventeen == true)
-		{
-			SetColor(c);
-		}
-		break;
-	case 17:
-		if (eighteen == true)
-		{
-			SetColor(c);
-		}
-		break;
-	case 18:
-		if (nineteen == true)
-		{
-			SetColor(c);
-		}
-		break;
-	case 19:
-		if (twenty == true)
-		{
-			SetColor(c);
-		}
-		break;
-	case 20:
-		if (twenty1 == true)
-		{
-			SetColor(c);
-		}
-		break;
-	case 21:
-		if (twenty2 == true)
-		{
-			SetColor(c);
-		}
-		break;
-	case 22:
-		if (twenty3 == true)
-		{
-			SetColor(c);
-		}
-		break;
-	case 23:
-		if (twenty4 == true)
-		{
-			SetColor(c);
-		}
-		break;
-	case 24:
-		if (twenty5 == true)
-		{
-			SetColor(c);
-		}
-		break;
-	default: SetColor(7);
-		break;
-
-
-	}
-}
-
 //Making every variable start as false
-void makegame()
+//filling board and starting music. setting free space to true
+void makeGame()
 {
-	fillvect();
-	fillpool();
-	one = false;
-	two = false;
-	three = false;
-	four = false;
-	five = false;
-	six = false;
-	seven = false;
-	eight = false;
-	nine = false;
-	ten = false;
-	eleven = false;
-	twelve = false;
-	thirteen = true;
-	fourteen = false;
-	fifteen = false;
-	sixteen = false;
-	seventeen = false;
-	eighteen = false;
-	nineteen = false;
-	twenty = false;
-	twenty1 = false;
-	twenty2 = false;
-	twenty3 = false;
-	twenty4 = false;
-	twenty5 = false;
+	PlaySound(TEXT("ShootingGallery.wav"), NULL, SND_ASYNC | SND_FILENAME | SND_LOOP);
+	SetColor(14);
+	bingologo();
+	SetColor(7);
+	Sleep(3000);
+	system("cls");
 
-	for (int i = 0; i < 25; i++)
-	{
-		vectpara[i] = vect25[i];
-	}
+	//set free space to true.
+	boardArrayFlags[2][2] = true;
+
+	//fill board with numbers
+	fillBoard();
 }
 
-void evaluatepick(int spot)
-{
-	if (spot == 0)
-	{
-		one = true;
-	}
-	if (spot == 1)
-	{
-		two = true;
-	}
-	if (spot == 2)
-	{
-		three = true;
-	}
-	if (spot == 3)
-	{
-		four = true;
-	}
-	if (spot == 4)
-	{
-		five = true;
-	}
-	if (spot == 5)
-	{
-		six = true;
-	}
-	if (spot == 6)
-	{
-		seven = true;
-	}
-	if (spot == 7)
-	{
-		eight = true;
-	}
-	if (spot == 8)
-	{
-		nine = true;
-	}
-	if (spot == 9)
-	{
-		ten = true;
-	}
-	if (spot == 10)
-	{
-		eleven = true;
-	}
-	if (spot == 11)
-	{
-		twelve = true;
-	}
-	if (spot == 12)
-	{
-		thirteen = true;
-	}
-	if (spot == 13)
-	{
-		fourteen = true;
-	}
-	if (spot == 14)
-	{
-		fifteen = true;
-	}
-	if (spot == 15)
-	{
-		sixteen = true;
-	}
-	if (spot == 16)
-	{
-		seventeen = true;
-	}
-	if (spot == 17)
-	{
-		eighteen = true;
-	}
-	if (spot == 18)
-	{
-		nineteen = true;
-	}
-	if (spot == 19)
-	{
-		twenty = true;
-	}
-	if (spot == 20)
-	{
-		twenty1 = true;
-	}
-	if (spot == 21)
-	{
-		twenty2 = true;
-	}
-	if (spot == 22)
-	{
-		twenty3 = true;
-	}
-	if (spot == 23)
-	{
-		twenty4 = true;
-	}
-	if (spot == 24)
-	{
-		twenty5 = true;
-	}
-}
-
-//check that the spot has not been taken
+//check the picked ball (int pick) with the scorecard numbers (boardArrayNums)
 void checkpick(int pick)
 {
-	for (int i = 0; i < 25; i++)
+	for (int i = 0; i < 5; i++)
 	{
-		if (vect25[i] == pick)
+		for (int j = 0; j < 5; j++)
 		{
-			evaluatepick(i);
+			//if pick is on your scoreboard, set flag
+			if (boardArrayNums[i][j] == pick)
+			{
+				boardArrayFlags[i][j] = true;
+			}
 		}
 	}
 }
 
-//Pick a random spot
-bool dopick(vector<int> ballpool, int a)
-{
-	bool run2 = false;
-	{
-		if (ballpool[a] == -1)
-		{
-			run2 = true;
-		}
-	}
-	return run2;
-}
-
-//If the check finds you win, play the winning screen and audio
-void uWin()
+//If the check finds you've won, play the winning screen and audio
+void winScreen()
 {
 	SetColor(10);
 	bingologo();
@@ -589,116 +267,115 @@ void uWin()
 	cout << setw(46) << "BINGO! You win!" << endl;
 	cout << setw(39) << "It took " << rounds << " rounds." << endl;
 	SetColor(7);
-	makeboard();
+	makeBoard();
 	Sleep(2000);
 }
 
-//First year coding way of checking for every bingo solution.
-void didYouWin()
+//function to check your scorecards' rows or columns for wins
+bool checkRowsOrColumns(string orientation)
 {
-	//1
-	if (one == true && six == true && eleven == true && sixteen == true && twenty1 == true)
+	for (int i = 0; i < 5; i++)
 	{
-		uWin();
-		program = 0;
+		bool consecutive = true;
+		for (int j = 0; j < 5; j++)
+		{
+			if (!boardArrayFlags[i][j] && orientation == "rows")
+			{
+				consecutive = false;
+			}
+			else if (!boardArrayFlags[j][i] && orientation == "columns")
+			{
+				consecutive = false;
+			}
+		}
+		if (consecutive)
+		{
+			return true;
+		}
 	}
-	//2
-	else if (two == true && seven == true && twelve == true && seventeen == true && twenty2 == true)
-	{
-		uWin();
-		program = 0;
-	}
-	//3
-	else if (three == true && eight == true && thirteen == true && eighteen == true && twenty3 == true)
-	{
-		uWin();
-		program = 0;
-	}
-	//4
-	else if (four == true && nine == true && fourteen== true && nineteen == true && twenty4 == true)
-	{
-		uWin();
-		program = 0;
-	}
-	//5
-	else if (five == true && ten == true && fifteen == true && twenty == true && twenty5 == true)
-	{
-		uWin();
-		program = 0;
-	}
-	//6
-	else if (one == true && two == true && three == true && four == true &&five == true)
-	{
-		uWin();
-		program = 0;
-	}
-	//7
-	else if (six == true && seven == true && eight == true && nine == true && ten == true)
-	{
-		uWin();
-		program = 0;
-	}
-	//8
-	else if (eleven == true && twelve == true && thirteen == true && fourteen == true && fifteen == true)
-	{
-		uWin();
-		program = 0;
-	}
-	//9
-	else if (sixteen == true && seventeen == true && eighteen == true && nineteen == true && twenty == true)
-	{
-		uWin();
-		program = 0;
-	}
-	//10
-	else if (twenty1 == true && twenty2 == true && twenty3 == true && twenty4 == true && twenty5 == true)
-	{
-		uWin();
-		program = 0;
-	}
-	//11
-	else if (five == true && nine == true && thirteen == true && seventeen == true && twenty1 == true)
-	{
-		uWin();
-		program = 0;
-	}
-	//12
-	else if (one == true && seven == true && thirteen == true && nineteen == true && twenty5 == true)
-	{
-		uWin();
-		program = 0;
-	}
-	
-
+	return false;
 }
 
-
-void menu()
+//function to check your scorecards' diagonals for wins
+bool checkDiagonals()
 {
-	while (program == 1)
+	bool consecutive = true;
+	//top left -> bottom right
+	for (int i = 0; i < 5; i++)
 	{
-		rounds++;
-			pick = RNG();
-			while (dopick(ballpool, pick))
-			{
-				pick = RNG();
-			}			
-			
-			cout << "Round: ";
-			SetColor(12);
-			cout << rounds;
-			SetColor(7);
-			cout << setw(35) << right << "Pick: ";
-			SetColor(14);
-			cout << pick << endl;
-			SetColor(7);
-			checkpick(pick);
-			makeboard();
-			ballpool[pick] = -1;
-			system("pause");
-			system("cls");
-			didYouWin();
+		if (!boardArrayFlags[i][i])
+		{
+			consecutive = false;
+		}
+	}
 
+	//check for top left -> bottom right
+	if (consecutive)
+	{
+		return true;
+	}
+
+	//bottom left -> top right
+	consecutive = true;
+	for (int i = 4, j = 0; i >= 0 && j <= 4; i--, j++)
+	{
+		if (!boardArrayFlags[i][j])
+		{
+			consecutive = false;
+		}
+	}
+	//check for bottom left -> top right
+	if (consecutive)
+	{
+		return true;
+	}
+}
+
+//win check for if the rows or columns or diagonals have a win.
+//if so, end program and display the win screen
+void winCheck()
+{
+	if (checkRowsOrColumns("rows") || checkRowsOrColumns("columns") || checkDiagonals())
+	{
+		winScreen();
+		game = false;
+	}
+}
+
+//play game loop, keeps track of rounds and picks, then displays
+//calls makeBoard after each pick and then checks for win
+void play()
+{
+	while (game)
+	{
+		//increment rounds
+		rounds++;
+
+		//take a pick
+		int pick = RNG();
+		while (ballpool[(pick - 1)])
+		{
+			pick = RNG();
+		}
+		//set flag in ballpool to true/picked
+		ballpool[(pick - 1)] = true;
+
+		//display rounds and the ball pick
+		cout << "Round: ";
+		SetColor(12);
+		cout << rounds;
+		SetColor(7);
+		cout << setw(35) << right << "Pick: ";
+		SetColor(14);
+		cout << pick << endl;
+		SetColor(7);
+
+		checkpick(pick);
+
+		makeBoard();
+		system("pause");
+		system("cls");
+		winCheck();
 	}
 }
 
@@ -720,12 +397,23 @@ void SetWindow(int Width, int Height)
 	SetConsoleWindowInfo(Handle, TRUE, &Rect);            // Set Window Size 
 }
 
+void menu()
+{
+	/*
+	while (program)
+	{
+
+	}
+	*/
+}
+
 int main()
 {
-	SetWindow(80,20);
+	SetWindow(80, 20);
 	srand(time(NULL));
-	makegame();
 	menu();
+	makeGame();
+	play();
 	system("pause");
 	return 0;
 }
