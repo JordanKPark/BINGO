@@ -1,6 +1,6 @@
 /* UPDATED-2021
  * Jordan Park
- * 2016
+ * 2016/2017
  * Bingo Application!
  *
  * To add windows.h and Play sound:
@@ -20,11 +20,12 @@
  *  * Users Login opening screen or continue as guest
  *  * Users are associated with currency
  *  * Menu
+ *     * acoustic brawl training music in menu?
  *     * Play
  *        * encase so when you win you go back
- *        * highlight the current pick if it's picked in a different color
- *        * make winning rows highlighted in a different color with a pause before the win
  *        * make betting (under 40, 30, 20, etc) with different betting multipliers
+ *        * highlight the current pick if it's picked in a different color
+ *        * make winning rows highlighted in a different color with a pause before the win   
  *     * Leaderboards
  *        * for best rounds
  *        * for highest moneys
@@ -38,8 +39,9 @@
 #include <cstdlib>
 #include <vector>
 #include <iomanip>
-#include <windows.h>
-#include <MMSystem.h>
+#include <windows.h> //colors
+#include <MMSystem.h> //sounds
+#include <conio.h> //cursor position
 
  //play once
  //PlaySound(TEXT("DearGod.wav"), NULL, SND_ASYNC);
@@ -52,11 +54,21 @@ string mpipe = "----------------------------------------------------------------
 string pipe = "|";
 string boardtitle = "|       B       |       I       |       N       |       G       |       O      |";
 
+CONST int MENU_SIZE = 4;
+string menu_choices[MENU_SIZE] = {"PLAY", "LEADERBOARDS", "ACCOUNT", "QUIT"};
+
+//menu_item = element in menu_choices
+//x 
+int menu_item = 0, gotoY = 9;
+
 //quit flag for program 
 bool program = true;
 
 //quit flag for game
 bool game = true;
+
+//winning numbers for showing 
+vector<int> winningNums;
 
 //global round tracker
 int rounds = 0;
@@ -70,26 +82,46 @@ bool boardArrayFlags[5][5] = { {false} };
 //a vector of picked balls so we don't pick the same ball twice
 vector<bool> ballpool(75, false);
 
+HANDLE console = GetStdHandle(STD_OUTPUT_HANDLE); // used for goto and SetColor()
+COORD CursorPosition; // used for goto
+
 /*
-1: Blue
-2: Green
-3: Cyan
-4: Red
-5: Purple
-6: Yellow (Dark)
-7: Default white
-8: Gray/Grey
-9: Bright blue
-10: Brigth green
-11: Bright cyan
-12: Bright red
-13: Pink/Magenta
-14: Yellow
+1: Blue 2: Green 3: Cyan 4: Red 5: Purple
+6: Yellow (Dark) 7: Default white 8: Gray/Grey
+9: Bright blue 10: Brigth green 11: Bright cyan
+12: Bright red 13: Pink/Magenta 14: Yellow
 15: Bright white
 */
-void SetColor(int value)
+void SetColor(string color)
 {
-	SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), value);
+	int value = 7;
+
+	if (color == "Default" || color == "White")
+	{
+		value = 7;
+	}
+	else if (color == "Green")
+	{
+		value = 10;
+	}
+	else if (color == "Cyan" || color == "Blue")
+	{
+		value = 11;
+	}
+	else if (color == "Red")
+	{
+		value = 12;
+	}
+	else if (color == "Pink" || color == "Purple")
+	{
+		value = 13;
+	}
+	else if (color == "Yellow")
+	{
+		value = 14;
+	}
+
+	SetConsoleTextAttribute(console, value);
 }
 
 //Returns Random number 1-75
@@ -132,7 +164,26 @@ void bingologo()
 	}
 }
 
-//fills our users' board with random numbers except our free space
+void bingologoMenu()
+{
+	fstream logoFile;
+	logoFile.open("bingoAscii2.txt", ios::in);
+
+	if (logoFile.is_open())
+	{
+		string logoLine;
+		int rainbow = 10;
+		while (getline(logoFile, logoLine))
+		{
+			SetConsoleTextAttribute(console, rainbow);
+			rainbow++;
+			cout << setw(53) << right << logoLine << endl;
+		}
+	}
+	SetColor("Default");
+}
+
+//fills our users' board with random numbers 1-75 except our free space (0)
 //#no duplicates
 void fillBoard()
 {
@@ -154,32 +205,40 @@ void fillBoard()
 	}
 }
 
+bool compareWinningNumbers(int x)
+{
+	for (int i = 0; i < winningNums.size(); i++)
+	{
+		if (winningNums[i] == x)
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
 //creates and displays our bingo card
-void makeBoard()
+void makeBoard(int foundPick)
 {
 	cout << endl;
 	cout << mpipe;
 	//BINGO top line
+	string bingoString = "BINGO";
 	cout << pipe << setw(8) << right;
-	SetColor(10);
-	cout << "B";
-	SetColor(7);
-	cout << setw(8) << pipe << setw(8);
-	SetColor(10);
-	cout << "I";
-	SetColor(7);
-	cout << setw(8) << pipe << setw(8);
-	SetColor(10);
-	cout << "N";
-	SetColor(7);
-	cout << setw(8) << pipe << setw(8);
-	SetColor(10);
-	cout << "G";
-	SetColor(7);
-	cout << setw(8) << pipe << setw(8);
-	SetColor(10);
-	cout << "O";
-	SetColor(7);
+
+	for (int i = 0; i < bingoString.size(); i++)
+	{
+		SetColor("Green");
+		cout << bingoString[i];
+
+		if (i < bingoString.size() - 1)
+		{
+			SetColor("Default");
+			cout << setw(8) << pipe << setw(8);
+		}
+	}
+
+	SetColor("Default");
 	cout << setw(7) << pipe;//
 	cout << mpipe;
 	cout << endl;
@@ -189,31 +248,50 @@ void makeBoard()
 	{
 		for (int j = 0; j < 5; j++)
 		{
-			SetColor(7);
+			SetColor("Default");
 
-			if (!(i == 2 && j == 2))
+			if (!(i == 2 && j == 2)) //if not the free space
 			{
-				SetColor(7);
+				SetColor("Default");
 				cout << right << pipe << setw(8);
-
-				//if this number has been picked, 
-				//then make it purple to  the user
-				if (boardArrayFlags[i][j])
+				//if this number has been picked and is the most recent pick, make it yellow
+				//or 
+				//if the game has been won and this is one of the winning numbers
+				if ((boardArrayFlags[i][j] && boardArrayNums[i][j] == foundPick) 
+					|| (foundPick == -1 && compareWinningNumbers(boardArrayNums[i][j])))
 				{
-					SetColor(13);
+					SetColor("Yellow");
 				}
-
+				//if this number has been picked, 
+				//then make it pink/purple to  the user
+				else if (boardArrayFlags[i][j])
+				{
+					SetColor("Pink");
+				}
+				else
+				{
+					SetColor("Cyan");
+				}
 				cout << boardArrayNums[i][j];
-				SetColor(7);
 
+				SetColor("Default");
 				cout << ((j < 4) ? setw(8) : setw(7));
 			}
+			//free space
 			else
 			{
 				cout << right << pipe << setw(13);
-				SetColor(13);
+				//if game has been won and free space is included, yellow.. if not.. pink
+				if (foundPick == -1 && compareWinningNumbers(0))
+				{
+					SetColor("Yellow");
+				}
+				else
+				{
+					SetColor("Pink");
+				}
 				cout << "Free  space";
-				SetColor(7);
+				SetColor("Default");
 				cout << setw(3);
 			}
 		}
@@ -226,10 +304,10 @@ void makeBoard()
 //filling board and starting music. setting free space to true
 void makeGame()
 {
-	PlaySound(TEXT("ShootingGallery.wav"), NULL, SND_ASYNC | SND_FILENAME | SND_LOOP);
-	SetColor(14);
+	PlaySound(TEXT("ShootingGallery.wav"), NULL, SND_ASYNC | SND_LOOP);
+	SetColor("Yellow");
 	bingologo();
-	SetColor(7);
+	SetColor("Default");
 	Sleep(3000);
 	system("cls");
 
@@ -241,7 +319,7 @@ void makeGame()
 }
 
 //check the picked ball (int pick) with the scorecard numbers (boardArrayNums)
-void checkpick(int pick)
+bool checkpick(int pick)
 {
 	for (int i = 0; i < 5; i++)
 	{
@@ -251,27 +329,35 @@ void checkpick(int pick)
 			if (boardArrayNums[i][j] == pick)
 			{
 				boardArrayFlags[i][j] = true;
+				return true;
 			}
 		}
 	}
+	return false;
 }
 
 //If the check finds you've won, play the winning screen and audio
 void winScreen()
 {
-	SetColor(10);
+	SetColor("Green");
 	bingologo();
+	cout << endl;
 	PlaySound(TEXT("Bingo.wav"), NULL, SND_ASYNC);
 	Sleep(2000);
-	SetColor(11);
+	SetColor("Cyan");
 	cout << setw(46) << "BINGO! You win!" << endl;
 	cout << setw(39) << "It took " << rounds << " rounds." << endl;
-	SetColor(7);
-	makeBoard();
+	SetColor("Default");
+	//-1 is code for winning here, set the winning numbers to yellow
+	makeBoard(-1);
 	Sleep(2000);
+	system("pause");
+	system("cls");
 }
 
 //function to check your scorecards' rows or columns for wins
+//winningNums keeps track of last checked row or column for 
+//if it is a win, we can reference it for highlighting it later
 bool checkRowsOrColumns(string orientation)
 {
 	for (int i = 0; i < 5; i++)
@@ -281,11 +367,22 @@ bool checkRowsOrColumns(string orientation)
 		{
 			if (!boardArrayFlags[i][j] && orientation == "rows")
 			{
+				winningNums.clear();
 				consecutive = false;
 			}
 			else if (!boardArrayFlags[j][i] && orientation == "columns")
 			{
+				winningNums.clear();
 				consecutive = false;
+			}
+
+			if (orientation == "rows" && consecutive == true)
+			{
+				winningNums.push_back(boardArrayNums[i][j]);
+			}
+			else if (orientation == "columns" && consecutive == true)
+			{
+				winningNums.push_back(boardArrayNums[j][i]);
 			}
 		}
 		if (consecutive)
@@ -293,6 +390,7 @@ bool checkRowsOrColumns(string orientation)
 			return true;
 		}
 	}
+	winningNums.clear();
 	return false;
 }
 
@@ -307,6 +405,7 @@ bool checkDiagonals()
 		{
 			consecutive = false;
 		}
+		winningNums.push_back(boardArrayNums[i][i]);
 	}
 
 	//check for top left -> bottom right
@@ -315,6 +414,8 @@ bool checkDiagonals()
 		return true;
 	}
 
+	winningNums.clear();
+	
 	//bottom left -> top right
 	consecutive = true;
 	for (int i = 4, j = 0; i >= 0 && j <= 4; i--, j++)
@@ -323,12 +424,17 @@ bool checkDiagonals()
 		{
 			consecutive = false;
 		}
+		winningNums.push_back(boardArrayNums[i][j]);
 	}
 	//check for bottom left -> top right
 	if (consecutive)
 	{
 		return true;
 	}
+	
+	winningNums.clear();
+	return false;
+
 }
 
 //win check for if the rows or columns or diagonals have a win.
@@ -360,19 +466,40 @@ void play()
 		//set flag in ballpool to true/picked
 		ballpool[(pick - 1)] = true;
 
+		bool foundPick = checkpick(pick);
+
+		//highlight pick in yellow if foundPick is true on the board
+		cout << endl;
+		if (foundPick)
+		{
+			makeBoard(pick);
+		}
+		else
+		{
+			makeBoard(0);
+		}
+
 		//display rounds and the ball pick
-		cout << "Round: ";
-		SetColor(12);
-		cout << rounds;
-		SetColor(7);
-		cout << setw(35) << right << "Pick: ";
-		SetColor(14);
-		cout << pick << endl;
-		SetColor(7);
+		cout << endl << endl;
+		cout << setw(32) << " ---------------";
+		cout << setw(33) << "---------------\n";
+		cout << setw(17) << pipe << "  ROUND: ";
+		SetColor("Red");
+		cout << setw(2) << rounds;
+		SetColor("Default");
+		cout << setw(4) << pipe;
 
-		checkpick(pick);
+		SetColor("Default");
+		cout << setw(18) << right << pipe << "  PICK: ";
+		SetColor("Yellow");
+		cout << setw(2) << pick;
+		SetColor("Default");
+		cout << setw(4) << pipe << endl;
+		cout << setw(32) << " ---------------";
+		cout << setw(33) << "---------------\n";
 
-		makeBoard();
+		cout << endl << endl << endl << endl;
+		Sleep(600);
 		system("pause");
 		system("cls");
 		winCheck();
@@ -397,23 +524,140 @@ void SetWindow(int Width, int Height)
 	SetConsoleWindowInfo(Handle, TRUE, &Rect);            // Set Window Size 
 }
 
+void gotoXY(int x, int y)
+{
+	CursorPosition.X = x;
+	CursorPosition.Y = y;
+	SetConsoleCursorPosition(console, CursorPosition);
+}
+
+void displayMenuOptions(int selected)
+{
+	for (int i = 0, j = 9; i < MENU_SIZE; i++, j+=2)
+	{
+		gotoXY(32, j);
+
+		if (i == selected)
+		{
+			SetColor("Purple");
+		}
+
+		cout << menu_choices[i];
+
+		SetColor("Default");
+	}
+}
+
 void menu()
 {
-	/*
+	cout << endl;
+	bingologoMenu();
+	SetColor("Yellow");
+	gotoXY(29, 9); cout << "->";
+	SetColor("Default");
+	
+
 	while (program)
 	{
+		displayMenuOptions(menu_item);
 
+		system("pause>nul"); // the >nul bit causes it the print no message
+
+		if (GetAsyncKeyState(VK_DOWN)) //down button pressed
+		{
+			//reset old arrow
+			gotoXY(29, gotoY); cout << "  ";
+
+			//if going down and you reach the end of list, reset to top
+			if (gotoY == 15)
+			{
+				gotoY = 9;
+				menu_item = 0;
+			}
+			else
+			{
+				gotoY+=2;
+				menu_item++;
+			}
+
+			SetColor("Yellow");
+			gotoXY(29, gotoY); cout << "->";
+			SetColor("Default");
+			continue;
+
+		}
+
+		if (GetAsyncKeyState(VK_UP)) //up button pressed
+		{
+			//reset old arrow
+			gotoXY(29, gotoY); cout << "  ";
+
+			//if going up and you reach the top of the list, reset to bottom
+			if (gotoY == 9)
+			{
+				gotoY = 15;
+				menu_item = MENU_SIZE - 1;
+			}
+			else
+			{
+				gotoY-=2;
+				menu_item--;
+			}
+
+			SetColor("Yellow");
+			gotoXY(29, gotoY); cout << "->";
+			SetColor("Default");
+			continue;
+		}
+
+		if (GetAsyncKeyState(VK_RETURN)) { // Enter key pressed
+
+			switch (menu_item) {
+
+			case 0: {
+
+				gotoXY(20, 16);
+				system("cls");
+				makeGame();
+				play();
+				cout << endl;
+				bingologoMenu();
+				SetColor("Yellow");
+				gotoXY(29, 9); cout << "->";
+				SetColor("Default");
+				break;
+			}
+
+
+			case 1: {
+				gotoXY(20, 16);
+				cout << "You chose Leaderboards...     ";
+				break;
+			}
+
+			case 2: {
+				gotoXY(20, 16);
+				cout << "You chose Account...     ";
+				break;
+			}
+
+			case 3: {
+				gotoXY(20, 16);
+				program = false;
+			}
+
+			}
+		}
 	}
-	*/
+
+	gotoXY(20, 21);
 }
 
 int main()
 {
-	SetWindow(80, 20);
+	SetWindow(80, 30);
 	srand(time(NULL));
 	menu();
-	makeGame();
-	play();
 	system("pause");
 	return 0;
 }
